@@ -10,6 +10,7 @@ declare -A LANG_EN=(
     [menu_title]="=== Proxy Manager ==="
     [enable_proxy]="Enable proxy"
     [add_proxy]="Add proxy"
+    [import_proxy]="Import proxy from URL"
     [list_proxies]="List proxies"
     [disable_proxy]="Disable proxy"
     [status]="Status"
@@ -20,6 +21,7 @@ declare -A LANG_EN=(
     [proxy_protocol]="Protocol (http/https/socks5):"
     [proxy_host]="Host:"
     [proxy_port]="Port:"
+    [proxy_url]="Proxy URL (protocol://host:port#name):"
     [added_proxy]="✓ Added proxy:"
     [no_proxies]="No proxies configured. Add one first."
     [select_proxy]="Select proxy to enable:"
@@ -32,12 +34,15 @@ declare -A LANG_EN=(
     [select_language]="Select language:"
     [language_changed]="✓ Language changed to:"
     [invalid_option]="Invalid option"
+    [invalid_url]="Invalid URL format. Use: protocol://host:port#name"
+    [invalid_port]="Invalid port number"
 )
 
 declare -A LANG_CN=(
     [menu_title]="=== 代理管理器 ==="
     [enable_proxy]="启用代理"
     [add_proxy]="添加代理"
+    [import_proxy]="从URL导入代理"
     [list_proxies]="代理列表"
     [disable_proxy]="禁用代理"
     [status]="状态"
@@ -48,6 +53,7 @@ declare -A LANG_CN=(
     [proxy_protocol]="协议 (http/https/socks5):"
     [proxy_host]="主机:"
     [proxy_port]="端口:"
+    [proxy_url]="代理URL (协议://主机:端口#名称):"
     [added_proxy]="✓ 代理已添加:"
     [no_proxies]="未配置代理。请先添加一个。"
     [select_proxy]="选择要启用的代理:"
@@ -60,12 +66,15 @@ declare -A LANG_CN=(
     [select_language]="选择语言:"
     [language_changed]="✓ 语言已切换为:"
     [invalid_option]="无效的选项"
+    [invalid_url]="无效的URL格式。使用: 协议://主机:端口#名称"
+    [invalid_port]="无效的端口号"
 )
 
 declare -A LANG_JP=(
     [menu_title]="=== プロキシマネージャー ==="
     [enable_proxy]="プロキシを有効にする"
     [add_proxy]="プロキシを追加"
+    [import_proxy]="URLからプロキシをインポート"
     [list_proxies]="プロキシ一覧"
     [disable_proxy]="プロキシを無効にする"
     [status]="状態"
@@ -76,6 +85,7 @@ declare -A LANG_JP=(
     [proxy_protocol]="プロトコル (http/https/socks5):"
     [proxy_host]="ホスト:"
     [proxy_port]="ポート:"
+    [proxy_url]="プロキシURL (プロトコル://ホスト:ポート#名前):"
     [added_proxy]="✓ プロキシを追加しました:"
     [no_proxies]="プロキシが設定されていません。先に追加してください。"
     [select_proxy]="有効にするプロキシを選択:"
@@ -88,12 +98,15 @@ declare -A LANG_JP=(
     [select_language]="言語を選択:"
     [language_changed]="✓ 言語を変更しました:"
     [invalid_option]="無効なオプション"
+    [invalid_url]="無効なURL形式です。使用: プロトコル://ホスト:ポート#名前"
+    [invalid_port]="無効なポート番号です"
 )
 
 declare -A LANG_KO=(
     [menu_title]="=== 프록시 관리자 ==="
     [enable_proxy]="프록시 활성화"
     [add_proxy]="프록시 추가"
+    [import_proxy]="URL에서 프록시 가져오기"
     [list_proxies]="프록시 목록"
     [disable_proxy]="프록시 비활성화"
     [status]="상태"
@@ -104,6 +117,7 @@ declare -A LANG_KO=(
     [proxy_protocol]="프로토콜 (http/https/socks5):"
     [proxy_host]="호스트:"
     [proxy_port]="포트:"
+    [proxy_url]="프록시 URL (프로토콜://호스트:포트#이름):"
     [added_proxy]="✓ 프록시가 추가되었습니다:"
     [no_proxies]="구성된 프록시가 없습니다. 먼저 추가하세요."
     [select_proxy]="활성화할 프록시를 선택하세요:"
@@ -116,6 +130,8 @@ declare -A LANG_KO=(
     [select_language]="언어를 선택하세요:"
     [language_changed]="✓ 언어가 변경되었습니다:"
     [invalid_option]="유효하지 않은 옵션"
+    [invalid_url]="잘못된 URL 형식입니다. 사용: 프로토콜://호스트:포트#이름"
+    [invalid_port]="잘못된 포트 번호입니다"
 )
 
 # Get current language
@@ -167,6 +183,47 @@ show_language_setup() {
         *) echo "EN" > "$LANG_FILE"; CURRENT_LANG="EN" ;;
     esac
     echo ""
+}
+
+parse_proxy_url() {
+    local url=$1
+    
+    if [[ ! $url =~ ^([a-z0-9]+)://([^:]+):([0-9]+)#(.+)$ ]]; then
+        echo "$(translate invalid_url)" >&2
+        return 1
+    fi
+    
+    local protocol="${BASH_REMATCH[1]}"
+    local host="${BASH_REMATCH[2]}"
+    local port="${BASH_REMATCH[3]}"
+    local name="${BASH_REMATCH[4]}"
+    
+    if ! [[ $port =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        echo "$(translate invalid_port)" >&2
+        return 1
+    fi
+    
+    if [[ ! "$protocol" =~ ^(http|https|socks5)$ ]]; then
+        echo "$(translate invalid_url)" >&2
+        return 1
+    fi
+    
+    echo "$protocol|$host|$port|$name"
+}
+
+import_proxy_from_url() {
+    read -p "$(translate proxy_url) " proxy_url
+    
+    local parsed=$(parse_proxy_url "$proxy_url" 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "$parsed"
+        return
+    fi
+    
+    IFS='|' read protocol host port name <<< "$parsed"
+    
+    jq ".proxies += [{\"name\":\"$name\",\"protocol\":\"$protocol\",\"host\":\"$host\",\"port\":$port}]" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    echo "$(translate added_proxy) $name"
 }
 
 list_proxies() {
@@ -259,11 +316,12 @@ main() {
         echo "$(translate menu_title)"
         echo "1) $(translate enable_proxy)"
         echo "2) $(translate add_proxy)"
-        echo "3) $(translate list_proxies)"
-        echo "4) $(translate disable_proxy)"
-        echo "5) $(translate status)"
-        echo "6) $(translate change_lang)"
-        echo "7) $(translate exit_menu)"
+        echo "3) $(translate import_proxy)"
+        echo "4) $(translate list_proxies)"
+        echo "5) $(translate disable_proxy)"
+        echo "6) $(translate status)"
+        echo "7) $(translate change_lang)"
+        echo "8) $(translate exit_menu)"
         echo ""
 
         read -p "$(translate choose_option) " choice
@@ -271,11 +329,12 @@ main() {
         case $choice in
             1) enable_proxy ;;
             2) add_proxy ;;
-            3) list_proxies ;;
-            4) disable_proxy ;;
-            5) show_status ;;
-            6) change_language ;;
-            7) break ;;
+            3) import_proxy_from_url ;;
+            4) list_proxies ;;
+            5) disable_proxy ;;
+            6) show_status ;;
+            7) change_language ;;
+            8) break ;;
             *) echo "$(translate invalid_option)" ;;
         esac
     done
