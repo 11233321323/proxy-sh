@@ -1,8 +1,139 @@
 #!/bin/bash
 
-# Proxy manager - lightweight terminal proxy selector
+# Proxy manager - lightweight terminal proxy selector with i18n support
 CONFIG_DIR="${HOME}/.config/proxy-sh"
 CONFIG_FILE="${CONFIG_DIR}/proxies.json"
+LANG_FILE="${CONFIG_DIR}/language.conf"
+
+# Language translations
+declare -A LANG_EN=(
+    [menu_title]="=== Proxy Manager ==="
+    [enable_proxy]="Enable proxy"
+    [add_proxy]="Add proxy"
+    [list_proxies]="List proxies"
+    [disable_proxy]="Disable proxy"
+    [status]="Status"
+    [change_lang]="Change language"
+    [exit_menu]="Exit"
+    [choose_option]="Choose option:"
+    [proxy_name]="Proxy name:"
+    [proxy_protocol]="Protocol (http/https/socks5):"
+    [proxy_host]="Host:"
+    [proxy_port]="Port:"
+    [added_proxy]="✓ Added proxy:"
+    [no_proxies]="No proxies configured. Add one first."
+    [select_proxy]="Select proxy to enable:"
+    [proxy_enabled]="✓ Proxy enabled:"
+    [url]="URL:"
+    [session]="Session:"
+    [proxy_disabled]="✓ Proxy disabled"
+    [proxy_status_on]="✓ Proxy enabled:"
+    [proxy_status_off]="✗ Proxy disabled"
+    [select_language]="Select language:"
+    [language_changed]="✓ Language changed to:"
+    [invalid_option]="Invalid option"
+)
+
+declare -A LANG_CN=(
+    [menu_title]="=== 代理管理器 ==="
+    [enable_proxy]="启用代理"
+    [add_proxy]="添加代理"
+    [list_proxies]="代理列表"
+    [disable_proxy]="禁用代理"
+    [status]="状态"
+    [change_lang]="修改语言"
+    [exit_menu]="退出"
+    [choose_option]="选择选项:"
+    [proxy_name]="代理名称:"
+    [proxy_protocol]="协议 (http/https/socks5):"
+    [proxy_host]="主机:"
+    [proxy_port]="端口:"
+    [added_proxy]="✓ 代理已添加:"
+    [no_proxies]="未配置代理。请先添加一个。"
+    [select_proxy]="选择要启用的代理:"
+    [proxy_enabled]="✓ 代理已启用:"
+    [url]="地址:"
+    [session]="会话:"
+    [proxy_disabled]="✓ 代理已禁用"
+    [proxy_status_on]="✓ 代理已启用:"
+    [proxy_status_off]="✗ 代理未启用"
+    [select_language]="选择语言:"
+    [language_changed]="✓ 语言已切换为:"
+    [invalid_option]="无效的选项"
+)
+
+declare -A LANG_JP=(
+    [menu_title]="=== プロキシマネージャー ==="
+    [enable_proxy]="プロキシを有効にする"
+    [add_proxy]="プロキシを追加"
+    [list_proxies]="プロキシ一覧"
+    [disable_proxy]="プロキシを無効にする"
+    [status]="状態"
+    [change_lang]="言語を変更"
+    [exit_menu]="終了"
+    [choose_option]="オプションを選択:"
+    [proxy_name]="プロキシ名:"
+    [proxy_protocol]="プロトコル (http/https/socks5):"
+    [proxy_host]="ホスト:"
+    [proxy_port]="ポート:"
+    [added_proxy]="✓ プロキシを追加しました:"
+    [no_proxies]="プロキシが設定されていません。先に追加してください。"
+    [select_proxy]="有効にするプロキシを選択:"
+    [proxy_enabled]="✓ プロキシが有効になりました:"
+    [url]="URL:"
+    [session]="セッション:"
+    [proxy_disabled]="✓ プロキシが無効になりました"
+    [proxy_status_on]="✓ プロキシが有効です:"
+    [proxy_status_off]="✗ プロキシは無効です"
+    [select_language]="言語を選択:"
+    [language_changed]="✓ 言語を変更しました:"
+    [invalid_option]="無効なオプション"
+)
+
+declare -A LANG_KO=(
+    [menu_title]="=== 프록시 관리자 ==="
+    [enable_proxy]="프록시 활성화"
+    [add_proxy]="프록시 추가"
+    [list_proxies]="프록시 목록"
+    [disable_proxy]="프록시 비활성화"
+    [status]="상태"
+    [change_lang]="언어 변경"
+    [exit_menu]="종료"
+    [choose_option]="옵션을 선택하세요:"
+    [proxy_name]="프록시 이름:"
+    [proxy_protocol]="프로토콜 (http/https/socks5):"
+    [proxy_host]="호스트:"
+    [proxy_port]="포트:"
+    [added_proxy]="✓ 프록시가 추가되었습니다:"
+    [no_proxies]="구성된 프록시가 없습니다. 먼저 추가하세요."
+    [select_proxy]="활성화할 프록시를 선택하세요:"
+    [proxy_enabled]="✓ 프록시가 활성화되었습니다:"
+    [url]="URL:"
+    [session]="세션:"
+    [proxy_disabled]="✓ 프록시가 비활성화되었습니다"
+    [proxy_status_on]="✓ 프록시가 활성화되었습니다:"
+    [proxy_status_off]="✗ 프록시가 비활성화되었습니다"
+    [select_language]="언어를 선택하세요:"
+    [language_changed]="✓ 언어가 변경되었습니다:"
+    [invalid_option]="유효하지 않은 옵션"
+)
+
+# Get current language
+get_language() {
+    if [ -f "$LANG_FILE" ]; then
+        cat "$LANG_FILE"
+    else
+        echo "EN"
+    fi
+}
+
+# Get translation string
+translate() {
+    local key=$1
+    local lang=$(get_language)
+    local var_name="LANG_${lang}[$key]"
+    echo "${!var_name:-$key}"
+}
 
 init_config() {
     if [ ! -d "$CONFIG_DIR" ]; then
@@ -11,34 +142,59 @@ init_config() {
     if [ ! -f "$CONFIG_FILE" ]; then
         echo '{"proxies":[]}' > "$CONFIG_FILE"
     fi
+    if [ ! -f "$LANG_FILE" ]; then
+        echo "EN" > "$LANG_FILE"
+        show_language_setup
+    fi
+}
+
+show_language_setup() {
+    echo ""
+    echo "Welcome to proxy-sh! / 欢迎使用 proxy-sh! / proxy-sh へようこそ！/ proxy-sh에 오신 것을 환영합니다!"
+    echo ""
+    echo "1) English"
+    echo "2) 中文 (Chinese)"
+    echo "3) 日本語 (Japanese)"
+    echo "4) 한국어 (Korean)"
+    echo ""
+    read -p "Select language / 选择语言 / 言語を選択 / 언어를 선택하세요: " lang_choice
+
+    case $lang_choice in
+        1) echo "EN" > "$LANG_FILE"; CURRENT_LANG="EN" ;;
+        2) echo "CN" > "$LANG_FILE"; CURRENT_LANG="CN" ;;
+        3) echo "JP" > "$LANG_FILE"; CURRENT_LANG="JP" ;;
+        4) echo "KO" > "$LANG_FILE"; CURRENT_LANG="KO" ;;
+        *) echo "EN" > "$LANG_FILE"; CURRENT_LANG="EN" ;;
+    esac
+    echo ""
 }
 
 list_proxies() {
-    jq -r '.proxies[] | "\(.name) (\(.protocol)://\(.host):\(.port))"' "$CONFIG_FILE" 2>/dev/null || echo "No proxies configured"
+    jq -r '.proxies[] | "\(.name) (\(.protocol)://\(.host):\(.port))"' "$CONFIG_FILE" 2>/dev/null || echo "$(translate no_proxies)"
 }
 
 add_proxy() {
-    read -p "Proxy name: " name
-    read -p "Protocol (http/https/socks5): " protocol
-    read -p "Host: " host
-    read -p "Port: " port
+    read -p "$(translate proxy_name) " name
+    read -p "$(translate proxy_protocol) " protocol
+    read -p "$(translate proxy_host) " host
+    read -p "$(translate proxy_port) " port
 
     local proxy_url="${protocol}://${host}:${port}"
     jq ".proxies += [{\"name\":\"$name\",\"protocol\":\"$protocol\",\"host\":\"$host\",\"port\":$port}]" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
-    echo "✓ Added proxy: $name"
+    echo "$(translate added_proxy) $name"
 }
 
 enable_proxy() {
     local proxies=($(jq -r '.proxies[].name' "$CONFIG_FILE" 2>/dev/null))
 
     if [ ${#proxies[@]} -eq 0 ]; then
-        echo "No proxies configured. Add one first."
+        echo "$(translate no_proxies)"
         return
     fi
 
-    PS3="Select proxy to enable: "
-    select proxy_name in "${proxies[@]}" "Cancel"; do
-        if [ "$proxy_name" = "Cancel" ] || [ -z "$proxy_name" ]; then
+    PS3="$(translate select_proxy) "
+    select proxy_name in "${proxies[@]}" "$(translate exit_menu)"; do
+        if [ "$proxy_name" = "$(translate exit_menu)" ] || [ -z "$proxy_name" ]; then
             break
         fi
 
@@ -56,9 +212,9 @@ enable_proxy() {
         export ALL_PROXY="$proxy_url"
         export all_proxy="$proxy_url"
 
-        echo "✓ Proxy enabled: $proxy_name"
-        echo "  URL: $proxy_url"
-        echo "  Session: $$"
+        echo "$(translate proxy_enabled) $proxy_name"
+        echo "  $(translate url) $proxy_url"
+        echo "  $(translate session) $$"
 
         break
     done
@@ -66,15 +222,33 @@ enable_proxy() {
 
 disable_proxy() {
     unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
-    echo "✓ Proxy disabled"
+    echo "$(translate proxy_disabled)"
 }
 
 show_status() {
     if [ -n "$http_proxy" ]; then
-        echo "✓ Proxy enabled: $http_proxy"
+        echo "$(translate proxy_status_on) $http_proxy"
     else
-        echo "✗ Proxy disabled"
+        echo "$(translate proxy_status_off)"
     fi
+}
+
+change_language() {
+    echo ""
+    echo "1) English"
+    echo "2) 中文 (Chinese)"
+    echo "3) 日本語 (Japanese)"
+    echo "4) 한국어 (Korean)"
+    echo ""
+    read -p "$(translate select_language) " lang_choice
+
+    case $lang_choice in
+        1) echo "EN" > "$LANG_FILE"; echo "$(translate language_changed) English" ;;
+        2) echo "CN" > "$LANG_FILE"; echo "$(translate language_changed) 中文" ;;
+        3) echo "JP" > "$LANG_FILE"; echo "$(translate language_changed) 日本語" ;;
+        4) echo "KO" > "$LANG_FILE"; echo "$(translate language_changed) 한국어" ;;
+        *) echo "$(translate invalid_option)" ;;
+    esac
 }
 
 main() {
@@ -82,16 +256,17 @@ main() {
 
     while true; do
         echo ""
-        echo "=== Proxy Manager ==="
-        echo "1) Enable proxy"
-        echo "2) Add proxy"
-        echo "3) List proxies"
-        echo "4) Disable proxy"
-        echo "5) Status"
-        echo "6) Exit"
+        echo "$(translate menu_title)"
+        echo "1) $(translate enable_proxy)"
+        echo "2) $(translate add_proxy)"
+        echo "3) $(translate list_proxies)"
+        echo "4) $(translate disable_proxy)"
+        echo "5) $(translate status)"
+        echo "6) $(translate change_lang)"
+        echo "7) $(translate exit_menu)"
         echo ""
 
-        read -p "Choose option: " choice
+        read -p "$(translate choose_option) " choice
 
         case $choice in
             1) enable_proxy ;;
@@ -99,8 +274,9 @@ main() {
             3) list_proxies ;;
             4) disable_proxy ;;
             5) show_status ;;
-            6) break ;;
-            *) echo "Invalid option" ;;
+            6) change_language ;;
+            7) break ;;
+            *) echo "$(translate invalid_option)" ;;
         esac
     done
 }
