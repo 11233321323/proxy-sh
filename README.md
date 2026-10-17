@@ -2,6 +2,13 @@
 
 A lightweight, interactive terminal proxy manager for Linux. One-command installation, menu-driven proxy selection with persistent config storage. Only affects the current shell session.
 
+**[📚 多语言文档 | View Documentation in Other Languages](LANGUAGES.md)**
+
+- [English](docs/README_EN.md)
+- [中文 (简体)](docs/README_CN.md)
+- [日本語](docs/README_JP.md)
+- [한국어](docs/README_KO.md)
+
 ## Features
 
 - 🚀 One-command installation
@@ -11,13 +18,25 @@ A lightweight, interactive terminal proxy manager for Linux. One-command install
 - 🔄 Support for HTTP/HTTPS/SOCKS5 protocols
 - ⚡ Quick enable/disable commands
 
+## Quick Start
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/11233321323/proxy-sh/main/install.sh | bash
+```
+
+Then type `pxy` in your terminal:
+
+```bash
+pxy
+```
+
 ## Installation
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/11233321323/proxy-sh/main/install.sh | bash
 ```
 
-Then add to your shell config (`~/.bashrc`, `~/.zshrc`, etc):
+Add to your shell config (`~/.bashrc`, `~/.zshrc`, etc):
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
