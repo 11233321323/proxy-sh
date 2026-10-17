@@ -9,6 +9,7 @@
 - 💾 로컬 JSON 설정 저장
 - 🔒 세션 격리 (현재 셸에만 영향, 시스템 전체에 영향 없음)
 - ⚡ 여러 프로토콜 지원 (HTTP/HTTPS/SOCKS5)
+- 🌍 **다국어 지원** (영어, 중국어, 일본어, 한국어)
 - 🔄 빠른 활성화/비활성화 명령
 
 ## 설치
@@ -31,6 +32,8 @@ export PATH="$HOME/.local/bin:$PATH"
 pxy
 ```
 
+처음 사용할 때 언어를 선택하는 프롬프트가 표시됩니다. 메뉴의 "언어 변경" 옵션에서 언제든 변경할 수 있습니다.
+
 ### 메뉴 옵션
 
 1. **프록시 활성화** - 저장된 프록시를 선택하여 활성화
@@ -38,27 +41,38 @@ pxy
 3. **프록시 목록** - 저장된 모든 프록시 보기
 4. **프록시 비활성화** - 현재 프록시 비활성화
 5. **상태** - 현재 프록시 상태 확인
-6. **종료** - 관리자 닫기
+6. **언어 변경** - 인터페이스 언어 전환
+7. **종료** - 관리자 닫기
 
 ## 사용 예시
 
 ```bash
 $ pxy
 
-=== Proxy Manager ===
-1) Enable proxy
-2) Add proxy
-3) List proxies
-4) Disable proxy
-5) Status
-6) Exit
+Welcome to proxy-sh! / 欢迎使用 proxy-sh! / proxy-sh へようこそ！/ proxy-sh에 오신 것을 환영합니다!
 
-Choose option: 2
-Proxy name: 회사프록시
-Protocol (http/https/socks5): socks5
-Host: proxy.company.com
-Port: 1080
-✓ Added proxy: 회사프록시
+1) English
+2) 中文 (Chinese)
+3) 日本語 (Japanese)
+4) 한국어 (Korean)
+
+Select language / 选择语言 / 言語を選択 / 언어를 선택하세요: 4
+
+=== 프록시 관리자 ===
+1) 프록시 활성화
+2) 프록시 추가
+3) 프록시 목록
+4) 프록시 비활성화
+5) 상태
+6) 언어 변경
+7) 종료
+
+옵션을 선택하세요: 2
+프록시 이름: 회사프록시
+프로토콜 (http/https/socks5): socks5
+호스트: proxy.company.com
+포트: 1080
+✓ 프록시가 추가되었습니다: 회사프록시
 ```
 
 ## 설정 파일
@@ -78,6 +92,8 @@ Port: 1080
 }
 ```
 
+언어 설정은 `~/.config/proxy-sh/language.conf`에 저장됩니다 (자동 생성).
+
 ## 요구사항
 
 - Bash 4.0 이상
@@ -89,6 +105,13 @@ Port: 1080
 - 프록시를 활성화할 때마다 스크립트는 환경 변수 (`http_proxy`, `https_proxy`, `ALL_PROXY` 등)를 현재 셸 세션에 내보냅니다
 - 이 변수들은 현재 터미널 세션에만 영향을 미치며 다른 셸이나 시스템 전체 설정에는 영향을 주지 않습니다
 - 터미널을 닫으면 프록시 설정이 자동으로 제거됩니다
+
+## 지원 언어
+
+- English
+- 中文 (簡体字中文)
+- 日本語
+- 한국어
 
 ## 라이선스
 
