@@ -1,0 +1,108 @@
+#!/bin/bash
+
+# Proxy manager - lightweight terminal proxy selector
+CONFIG_DIR="${HOME}/.config/proxy-sh"
+CONFIG_FILE="${CONFIG_DIR}/proxies.json"
+
+init_config() {
+    if [ ! -d "$CONFIG_DIR" ]; then
+        mkdir -p "$CONFIG_DIR"
+    fi
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo '{"proxies":[]}' > "$CONFIG_FILE"
+    fi
+}
+
+list_proxies() {
+    jq -r '.proxies[] | "\(.name) (\(.protocol)://\(.host):\(.port))"' "$CONFIG_FILE" 2>/dev/null || echo "No proxies configured"
+}
+
+add_proxy() {
+    read -p "Proxy name: " name
+    read -p "Protocol (http/https/socks5): " protocol
+    read -p "Host: " host
+    read -p "Port: " port
+
+    local proxy_url="${protocol}://${host}:${port}"
+    jq ".proxies += [{\"name\":\"$name\",\"protocol\":\"$protocol\",\"host\":\"$host\",\"port\":$port}]" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    echo "✓ Added proxy: $name"
+}
+
+enable_proxy() {
+    local proxies=($(jq -r '.proxies[].name' "$CONFIG_FILE" 2>/dev/null))
+
+    if [ ${#proxies[@]} -eq 0 ]; then
+        echo "No proxies configured. Add one first."
+        return
+    fi
+
+    PS3="Select proxy to enable: "
+    select proxy_name in "${proxies[@]}" "Cancel"; do
+        if [ "$proxy_name" = "Cancel" ] || [ -z "$proxy_name" ]; then
+            break
+        fi
+
+        local proxy_data=$(jq ".proxies[] | select(.name==\"$proxy_name\")" "$CONFIG_FILE")
+        local protocol=$(echo "$proxy_data" | jq -r '.protocol')
+        local host=$(echo "$proxy_data" | jq -r '.host')
+        local port=$(echo "$proxy_data" | jq -r '.port')
+
+        local proxy_url="${protocol}://${host}:${port}"
+
+        export http_proxy="$proxy_url"
+        export https_proxy="$proxy_url"
+        export HTTP_PROXY="$proxy_url"
+        export HTTPS_PROXY="$proxy_url"
+        export ALL_PROXY="$proxy_url"
+        export all_proxy="$proxy_url"
+
+        echo "✓ Proxy enabled: $proxy_name"
+        echo "  URL: $proxy_url"
+        echo "  Session: $$"
+
+        break
+    done
+}
+
+disable_proxy() {
+    unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
+    echo "✓ Proxy disabled"
+}
+
+show_status() {
+    if [ -n "$http_proxy" ]; then
+        echo "✓ Proxy enabled: $http_proxy"
+    else
+        echo "✗ Proxy disabled"
+    fi
+}
+
+main() {
+    init_config
+
+    while true; do
+        echo ""
+        echo "=== Proxy Manager ==="
+        echo "1) Enable proxy"
+        echo "2) Add proxy"
+        echo "3) List proxies"
+        echo "4) Disable proxy"
+        echo "5) Status"
+        echo "6) Exit"
+        echo ""
+
+        read -p "Choose option: " choice
+
+        case $choice in
+            1) enable_proxy ;;
+            2) add_proxy ;;
+            3) list_proxies ;;
+            4) disable_proxy ;;
+            5) show_status ;;
+            6) break ;;
+            *) echo "Invalid option" ;;
+        esac
+    done
+}
+
+main "$@"
