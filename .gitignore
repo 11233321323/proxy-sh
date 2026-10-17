@@ -1,0 +1,5 @@
+.config/
+*.swp
+*.swo
+*~
+.DS_Store
